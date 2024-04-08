@@ -1,0 +1,1 @@
+if __name__ == '__main__':    print('Position 1:', bus_servo.get_position(1)) # Get the position of servo No. 1    print('Position 2:', bus_servo.get_position(2)) # Get the position of servo No. 2    print('Position 3:', bus_servo.get_position(3)) # Get the position of servo No. 3
