@@ -42,8 +42,8 @@ def cycle7SegDisp():
 def moveArm():
 	rob = RobotControl()
 	arm = rob.arm
-	positions = [(196, -52, 203), (140, -221, 121), (-1, -200, 188), (-124, -220, 113), (-167, -79, 153), (-256, -79, 83), (216, -151, 89), (264, 8, 89), (-138, -233, 75), (0, -193, 68)]
-
+	# positions = [(196, -52, 203), (140, -221, 121), (-1, -200, 188), (-124, -220, 113), (-167, -79, 153), (-256, -79, 83), (216, -151, 89), (264, 8, 89), (-138, -233, 75), (0, -193, 68)]
+	positions = [(0, -200, 200), (0, -125, 200), (0, -200, 200), (0, -200, 200), (0, -200, 100)]
 	tm = TM1640(clk=Pin(33), dio=Pin(32))
 
 	for i, pos in enumerate(positions):
@@ -83,8 +83,8 @@ def learnArmPos():
 
 def main():
 	# checkColor()
-	cycle7SegDisp()
-	# moveArm()
+	# cycle7SegDisp()
+	moveArm()
 	# learnArmPos()
 	pass
 
