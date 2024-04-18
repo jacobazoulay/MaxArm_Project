@@ -1,14 +1,14 @@
 import time
 from SuctionNozzle import SuctionNozzle
 from BusServo import BusServo
-from espmax import ESPMax
+from Arm import Arm
 
 
 def main():
 
   nozzle = SuctionNozzle()
   bus_servo = BusServo() 
-  arm = ESPMax(bus_servo)
+  arm = Arm(bus_servo)
   height = [395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409]
   new = 0
 

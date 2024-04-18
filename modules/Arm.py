@@ -3,15 +3,15 @@ import math
 import __espmax
 from BusServo import BusServo
 
-L0 = 84.0
-L1 = 8.2
-L2 = 128.0
-L3 = 138.0
-L4 = 16.8
+L0 = 84.0     # Ground to base
+L1 = 8.2      # Center of base out to first arm
+L2 = 128.0    # Length of first arm
+L3 = 138.0    # Length of second arm
+L4 = 16.8     # Length of third arm
 
 
-class ESPMax:
-    ORIGIN = 0, -(L1 + L3 + L4), L0 + L2
+class Arm:
+    ORIGIN = 0, (L1 + L3 + L4), L0 + L2
 
     def __init__(self, bus_servo=BusServo(), origin=ORIGIN):
       self.bus_servo = bus_servo
@@ -41,7 +41,11 @@ class ESPMax:
     def pulses_to_position(self, pulses):
         joints = __espmax.pulse_to_deg(pulses)
         x,y,z = __espmax.forward(self.L4, joints)
-        return -int(x+0.5),int(y+0.5),int(z+0.5)
+        return -int(x+0.5),-int(y+0.5),int(z+0.5)
+    
+    def pulses_to_angles(self, pulses):
+        joints = __espmax.pulse_to_deg(pulses)
+        return joints
   
     def set_position(self, position, duration):
         duration = int(duration)
@@ -51,7 +55,7 @@ class ESPMax:
               z = 225
           if math.sqrt(x ** 2 + y ** 2) < 50:
               return None
-          angles = __espmax.inverse(self.L4, (-x, y, z))
+          angles = __espmax.inverse(self.L4, (-x, -y, z))
           pulses = __espmax.deg_to_pulse(angles)
           for i in range(3):
                   ret = self.set_servo_in_range(i + 1, pulses[i], duration)
@@ -137,6 +141,16 @@ class ESPMax:
         self.bus_servo.unload(i+1)
   
     def read_position(self):
+      pulses_list = self.read_pulses()
+      x,y,z = Arm.pulses_to_position(self,pulses_list)
+      return x,y,z
+  
+    def read_angles(self):
+      pulses_list = self.read_pulses()
+      joints = Arm.pulses_to_angles(self,pulses_list)
+      return joints
+    
+    def read_pulses(self):
       pulses_list = []
       for i in range(3):
         pulses = self.bus_servo.get_position(i+1)
@@ -157,9 +171,8 @@ class ESPMax:
                 return False
             time.sleep_ms(5)
         time.sleep_ms(5)
-      x,y,z = ESPMax.pulses_to_position(self,pulses_list)
-      return x,y,z
-    
+      return pulses_list 
+
     def verify_position(self, x,y,z):
       try:
         angles = __espmax.inverse(self.L4, (x,y,z))
@@ -167,20 +180,4 @@ class ESPMax:
         return True
       except:
         return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

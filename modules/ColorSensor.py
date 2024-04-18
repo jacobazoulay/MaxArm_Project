@@ -1,5 +1,5 @@
 from micropython import const
-from Color_CONST import *
+from ColorCONST import *
 from time import sleep
 
 
@@ -11,7 +11,7 @@ g_f = const(150)
 b_f = const(140)
 
 
-class COLOR:
+class ColorSensor:
   class GestureData:
     def __init__(self):
       self.u_data = [0] * 32
@@ -39,7 +39,7 @@ class COLOR:
     self.gesture_state_ = 0
     self.gesture_motion_ = APDS9960_DIR_NONE
 
-    self.gesture_data_ = COLOR.GestureData()
+    self.gesture_data_ = ColorSensor.GestureData()
 
     self.dev_id = self._read_byte_data(APDS9960_REG_ID)
     if not self.dev_id in bytes(valid_id):

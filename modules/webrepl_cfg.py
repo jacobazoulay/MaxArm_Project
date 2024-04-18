@@ -1,1 +1,0 @@
-PASS = 'password'

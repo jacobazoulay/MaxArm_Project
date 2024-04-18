@@ -1,16 +1,17 @@
 import time
-from espmax import ESPMax
-from RobotControl import RobotControl
+from Arm import Arm
+from Robot import Robot
 from TM1640 import TM1640
-from Color_sensor import COLOR
+from ColorSensor import ColorSensor
 from machine import Pin, I2C
 from micropython import const
 
 
 def checkColor():
 	i2c = I2C(0, scl=Pin(16), sda=Pin(17), freq=100000)
-	apds = COLOR(i2c)
+	apds = ColorSensor(i2c)
 	apds.enableLightSensor(True)
+	apds.setAmbientLightGain(3)
 
 	tm = TM1640(clk=Pin(33), dio=Pin(32))
 
@@ -40,16 +41,16 @@ def cycle7SegDisp():
 
 
 def moveArm():
-	rob = RobotControl()
+	rob = Robot()
 	arm = rob.arm
 	# positions = [(196, -52, 203), (140, -221, 121), (-1, -200, 188), (-124, -220, 113), (-167, -79, 153), (-256, -79, 83), (216, -151, 89), (264, 8, 89), (-138, -233, 75), (0, -193, 68)]
 	positions = [(0, -200, 200), (0, -125, 200), (0, -200, 200), (0, -200, 200), (0, -200, 100)]
 	tm = TM1640(clk=Pin(33), dio=Pin(32))
 
-	for i, pos in enumerate(positions):
-		tm.tube_display(i+1)
-		arm.set_position(pos, 1000)
-		time.sleep_ms(2000)
+	# for i, pos in enumerate(positions):
+	# 	tm.tube_display(i+1)
+	# 	arm.set_position(pos, 1000)
+	# 	time.sleep_ms(2000)
 		
 	arm.go_home()
 	tm.tube_display_flash(len(positions), num_flash=3, flash_speed=750)
@@ -59,7 +60,7 @@ def moveArm():
 
 
 def learnArmPos():
-	rob = RobotControl()
+	rob = Robot()
 	positions = []
 	button = Pin(0)
 	tm = TM1640(clk=Pin(33), dio=Pin(32))

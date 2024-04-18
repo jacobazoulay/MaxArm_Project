@@ -1,11 +1,11 @@
 import time
 from SuctionNozzle import SuctionNozzle
 from BusServo import BusServo
-from espmax import ESPMax
+from Arm import Arm
 
 nozzle = SuctionNozzle()
 bus_servo = BusServo() 
-arm = ESPMax(bus_servo)
+arm = Arm(bus_servo)
 
 
 if __name__ == '__main__':

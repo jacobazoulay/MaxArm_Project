@@ -10,22 +10,22 @@ import time
 import sys
 from SuctionNozzle import SuctionNozzle
 from BusServo import BusServo
-from espmax import ESPMax
-from RobotControl import RobotControl
+from Arm import Arm
+from Robot import Robot
 from TM1640 import TM1640
-from Color_sensor import COLOR
+from ColorSensor import ColorSensor
 from machine import Pin, I2C
 from micropython import const
 
 nozzle = SuctionNozzle()
 bus_servo = BusServo() 
-arm = ESPMax(bus_servo)
+arm = Arm(bus_servo)
 
 i2c = I2C(0, scl=Pin(16), sda=Pin(17), freq=100000)
-apds = COLOR(i2c)
+apds = ColorSensor(i2c)
 apds.enableLightSensor(True)
 
-rob = RobotControl()
+rob = Robot()
 arm = rob.arm
 posTop = (220, 6, 182)
 posDown = (221, -9, 26)
@@ -47,7 +47,7 @@ color = ""
 def checkColor():
   global color
   i2c = I2C(0, scl=Pin(16), sda=Pin(17), freq=100000)
-  apds = COLOR(i2c)
+  apds = ColorSensor(i2c)
   apds.enableLightSensor(True)
 
   tm = TM1640(clk=Pin(33), dio=Pin(32))
