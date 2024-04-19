@@ -5,23 +5,15 @@ sys.path.append('/modules')
 import time
 from machine import Pin
 import _thread as thread
-from LedDisplays import LEDDigitDisplay, LEDMatrixDisplay
+from LedDisplays import LEDDigitDisplay
 from Buzzer import Buzzer
 from Led import LED
 from Robot import Robot
 
 
-def rob_reset():
-    rob = Robot()
-
-    rob.arm.go_home()
-    time.sleep_ms(2000)
-    rob.arm.teaching_mode()
-    rob.end_effector.set_angle(0)
-
-def buz_led_reset():
-    buz = Buzzer()
-    led = LED()
+def buz_led_reset(rob: Robot):
+    buz = rob.buz
+    led = rob.led
     for i in range(3):
         buz.on()
         led.on()
@@ -30,25 +22,18 @@ def buz_led_reset():
         led.off()
         time.sleep_ms(250)
 
-def display_welcome_msg():
-    led_dig_disp = LEDDigitDisplay(clk=Pin(33), dio=Pin(32))
+def display_welcome_msg(rob: Robot):
+    led_dig_disp = rob.LED_seg_disp
     led_dig_disp.tube_display("    Hello Robot", scroll_speed_ms=150)
 
-def display_welcome_animation():
-    led_mat_disp = LEDMatrixDisplay(clk=Pin(22), dio=Pin(23))
-    led_mat_disp.animate_loading_horiz()
-    led_mat_disp.update_display()
-
-
 def reset():
-    thread.start_new_thread(rob_reset, ())
-    thread.start_new_thread(buz_led_reset, ())
-    thread.start_new_thread(display_welcome_msg,())
-    thread.start_new_thread(display_welcome_animation,())
+    rob = Robot()
+    
+    thread.start_new_thread(rob.rob_reset, ())
+    thread.start_new_thread(buz_led_reset, [rob])
+    thread.start_new_thread(display_welcome_msg, [rob])
     
 
 if __name__ == "__main__":
     reset()
-    rob = Robot()
-    while True:
-        rob.mimic_position()
+

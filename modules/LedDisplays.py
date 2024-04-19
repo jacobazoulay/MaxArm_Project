@@ -2,7 +2,6 @@ from micropython import const
 from machine import Pin
 import time
 import math
-# from Robot import Robot
 
 TM1640_CMD1 = const(64)  # 0x40 data command
 TM1640_CMD2 = const(192) # 0xC0 address command
@@ -20,22 +19,6 @@ tube_font_letters = {
     '4': 0x66, '5': 0x6d, '6': 0x7d, '7': 0x07, '8': 0x7f, '9': 0x6f,
     ' ': 0x00, "_": 0x08
 }
-
-# robot_move_horiz = [[0x02, 0x06, 0xce, 0xda, 0xf2, 0xe2, 0xc2, 0xc6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x06, 0xce, 0xda, 0xf2, 0xe2, 0xc2, 0xc2, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc6, 0xde, 0xfa, 0xe2, 0xc2, 0xc2, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xce, 0xfe, 0xf2, 0xc2, 0xc2, 0x02, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc2, 0x02, 0x02, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xf0, 0xfe, 0xce, 0xc2, 0x02, 0x02, 0x02, 0x02, 0x06, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xe0, 0xf8, 0xde, 0xc6, 0x02, 0x02, 0x02, 0x02, 0x02, 0x06, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xe0, 0xf0, 0xd8, 0xce, 0x06, 0x02, 0x02, 0x02, 0x02, 0x02, 0x06, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xe0, 0xf0, 0xd8, 0xcc, 0x06, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x06]]
-    
-# robot_move_vert  = [[0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc2, 0x02, 0x02, 0x02, 0x06, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc2, 0x04, 0x04, 0x04, 0x0c, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc2, 0x04, 0x04, 0x08, 0x18, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc4, 0x04, 0x08, 0x10, 0x30, 0x00, 0x00, 0x00, 0x00],
-#                         [0x00, 0x00, 0xc0, 0xc0, 0xfe, 0xfe, 0xc2, 0xc4, 0x08, 0x10, 0x20, 0x60, 0x00, 0x00, 0x00, 0x00]]
 
 
 class TM1640(object):
@@ -215,15 +198,7 @@ class LEDMatrixDisplay(TM1640):
 
     def __init__(self, clk, dio, brightness=7):
         super().__init__(clk, dio, brightness)
-
-    def bits2byte(self, bit_list):
-        if len(bit_list) != 8:
-            raise ValueError("Length of bit list must be 8")
-        out = 0
-        for bit in bit_list:
-            out = (out << 1) | bit
-
-        return out
+        self.display_animator = DisplayAnimator()
 
     def map(self, x, in_min, in_max, out_min, out_max):
       return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -241,7 +216,7 @@ class LEDMatrixDisplay(TM1640):
             raise ValueError("Horizontal line position out of range")
         v_line_bits = [0] * 8
         v_line_bits[pos] = 1
-        vert_line = self.bits2byte(v_line_bits)
+        vert_line = self.display_animator.bits2byte(v_line_bits)
         in_cmd = [vert_line] * 16
 
         self.write(in_cmd)
@@ -254,28 +229,50 @@ class LEDMatrixDisplay(TM1640):
                 self.write(in_cmd)
                 time.sleep_ms(dur // 16)
 
-    def robot_start_up_animation(self, dur):
-        pass
-    
-    # def mimic_robot_pos(self, coordinates):
+    def robot_start_up_animation(self):
         
-    #     x, y, z = coordinates
-    #     x_disp = (x**2 + y**2)**0.5
-    #     y_disp = z
+        frames = [
+                    [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0], [0, 0, 192, 206, 254, 242, 194, 194, 2, 2, 6, 0, 0, 0, 0, 0], [0, 0, 198, 222, 250, 226, 194, 194, 2, 6, 0, 0, 0, 0, 0, 0],
+                    [0, 4, 204, 252, 244, 196, 196, 196, 12, 0, 0, 0, 0, 0, 0, 0], [0, 4, 204, 252, 244, 196, 196, 196, 12, 0, 0, 0, 0, 0, 0, 0], [0, 4, 204, 252, 244, 196, 196, 196, 12, 0, 0, 0, 0, 0, 0, 0], 
+                    [0, 4, 204, 252, 244, 196, 196, 196, 12, 0, 0, 0, 0, 0, 0, 0], [0, 0, 198, 222, 250, 226, 194, 194, 2, 6, 0, 0, 0, 0, 0, 0], [0, 0, 192, 206, 254, 242, 194, 194, 2, 2, 6, 0, 0, 0, 0, 0],
+                    [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0], [0, 0, 192, 192, 240, 254, 206, 194, 2, 2, 2, 2, 6, 0, 0, 0], [0, 0, 192, 192, 224, 248, 222, 198, 2, 2, 2, 2, 2, 6, 0, 0],
+                    [0, 0, 192, 192, 192, 240, 248, 204, 4, 4, 4, 4, 4, 4, 12, 0], [0, 0, 192, 192, 192, 240, 248, 204, 4, 4, 4, 4, 4, 4, 12, 0], [0, 0, 192, 192, 192, 224, 224, 240, 24, 8, 8, 8, 8, 8, 8, 24], 
+                    [0, 0, 192, 192, 192, 224, 224, 240, 24, 8, 8, 8, 8, 8, 8, 24], [0, 0, 192, 192, 192, 240, 248, 204, 4, 4, 4, 4, 4, 4, 12, 0], [0, 0, 192, 192, 192, 240, 248, 204, 4, 4, 4, 4, 4, 4, 12, 0],
+                    [0, 0, 192, 192, 224, 248, 222, 198, 2, 2, 2, 2, 2, 6, 0, 0], [0, 0, 192, 192, 240, 254, 206, 194, 2, 2, 2, 2, 6, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0],
+                    [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 4, 4, 12, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 196, 4, 4, 8, 24, 0, 0, 0, 0],
+                    [0, 0, 192, 192, 254, 254, 196, 196, 8, 8, 48, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 196, 200, 8, 16, 96, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 196, 216, 32, 192, 0, 0, 0, 0, 0, 0], 
+                    [0, 0, 192, 192, 254, 254, 196, 216, 32, 192, 0, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 196, 200, 8, 16, 96, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 196, 196, 8, 8, 48, 0, 0, 0, 0, 0],
+                    [0, 0, 192, 192, 254, 254, 194, 196, 4, 4, 8, 24, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 4, 4, 12, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0]
+                 ]
 
-    #     x_animate = self.map(x_disp, 60, 250, 0, 8)
-    #     y_animate = self.map(y_disp, 90, 200, 4, 0)
+        for frame in frames:
+            self.write(frame)
+            time.sleep_ms(50)
+    
+    def mimic_robot(self, arm: Robot.arm):
+        joints = arm.read_angles()
+        frame = self.display_animator.generate_frame(joints)
+        self.write(frame)
+        time.sleep_ms(100)
 
-    #     x_animate = round(max(0, min(8, x_animate)))
-    #     y_animate = round(max(0, min(4, y_animate)))
 
-    #     if 140 < x_disp < 180 or y_disp < 150:
-    #         frame = robot_move_vert[y_animate]
-    #     else:
-    #         frame = robot_move_horiz[x_animate]
+class DisplayAnimator():
+    
+    def __init__(self):
+        self.L1 = 5
+        self.L2 = 6
+        self.ORIG = 5, 1
+        self.ORIG_LEFT = self.ORIG[0] - 1, self.ORIG[1]
+    
+    def bits2byte(self, bit_list):
+        if len(bit_list) != 8:
+            raise ValueError("Length of bit list must be 8")
+        out = 0
+        for bit in bit_list:
+            out = (out << 1) | bit
 
-    #     self.write(frame)
-
+        return out
+    
     def draw_line(self, grid, p0, p1):
         x0, y0 = p0
         x1, y1 = p1
@@ -308,50 +305,38 @@ class LEDMatrixDisplay(TM1640):
             out.append(byte_val)
         return out
 
-    def generate_frame(self, angles):
-        L1 = 5
-        L2 = 6
-        ORIG = 5, 1
-        ORIG_LEFT = ORIG[0] - 1, ORIG[1]
-
+    def generate_raw_frame(self, angles):
         _, j2, j3 = angles
 
         j2 = math.radians(180 - j2)
         j3 = math.radians(-j3)
 
-        p1 = round(ORIG[0] + L1*math.cos(j2)), round(ORIG[1] + L1*math.sin(j2))
+        p1 = round(self.ORIG[0] + self.L1*math.cos(j2)), round(self.ORIG[1] + self.L1*math.sin(j2))
         p1_left = p1[0] -1, p1[1]
-        p2 = round(p1[0] + L2*math.cos(j3)), round(p1[1] + L2*math.sin(j3))
+        p2 = round(p1[0] + self.L2*math.cos(j3)), round(p1[1] + self.L2*math.sin(j3))
         p3 = p2[0], p2[1]-1
 
         grid = [[0] * 8 for _ in range(16)]
         self.draw_line(grid, (2, 0), (7, 0))
         self.draw_line(grid, (2, 1), (7, 1))
         
-        self.draw_line(grid, ORIG, p1)
-        self.draw_line(grid, ORIG_LEFT, p1_left)
+        self.draw_line(grid, self.ORIG, p1)
+        self.draw_line(grid, self.ORIG_LEFT, p1_left)
         self.draw_line(grid, p1, p2)
         self.draw_line(grid, p2, p3)
 
         return grid
     
-    def mimic_robot(self, arm: Robot.arm):
-        joints = arm.read_angles()
-        grid = self.generate_frame(joints)
-        frame = self.conv_frame(grid)
-        self.write(frame)
+    def generate_frame(self, angles):
+        grid = self.generate_raw_frame(angles)
+        out = self.conv_frame(grid)
+        return out
 
 
 def test():
     led_dig_display = LEDDigitDisplay(clk=Pin(33), dio=Pin(32))
     for i in range(1000):
         led_dig_display.tube_display(i)
-
-
-def testMatrix():
-    rob = Robot()
-    mat = LEDMatrixDisplay(clk=Pin(22), dio=Pin(23))
-    mat.mimic_robot(rob.arm)
 
 def testmat2():
     frames=[[63, 63, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [63, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0]]
@@ -361,5 +346,5 @@ def testmat2():
         time.sleep(0.4)
 
 if __name__ == "__main__":
-    testmat2()
+    test()
 
