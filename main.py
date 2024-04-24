@@ -6,6 +6,11 @@ import time
 import _thread as thread
 from Robot import Robot
 
+# Adding this line because somewhere in the frozen modules len is assigned to an integer variable,
+# overwriting the builtin function. This causes errors down stream if not corrected here
+if isinstance(len, int):
+    del len
+
 
 def buz_led_reset(rob: Robot):
     buz = rob.buz

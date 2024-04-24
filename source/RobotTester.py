@@ -8,6 +8,8 @@ def cycleCards(num=1, press_dur=1500, retract_dur=2000):
 	rob.arm.set_position_with_speed((0, 130, 200), 0.3)
 	for cycle in range(num):
 		for i in range(3):
+			s = str(cycle + 1) + " " * (3 - len(str(cycle + 1))) + str(i + 1)
+			rob.LED_seg_disp.tube_display(s)
 			rob.end_effector.set_card(i)
 			time.sleep_ms(500)
 			rob.arm.set_position_with_speed((0, 230, 190), 0.3)
@@ -92,7 +94,7 @@ def learnArmPos():
 
 
 def main():
-	cycleCards()
+	cycleCards(3)
  
 
 if __name__ == '__main__':
