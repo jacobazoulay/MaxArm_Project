@@ -8,11 +8,16 @@ class Buzzer:
   def __init__(self, io=27, freq=2500):
     self.buzzer = PWM(Pin(io), freq=freq, duty=0)
     self.duty = 18
+    self.freq = freq
+    self.freq_old = 0
     
   def on(self):
+    self.freq_old = self.buzzer.freq()
+    self.buzzer.freq(self.freq)
     self.buzzer.duty(self.duty)
   
   def off(self):
+    self.buzzer.freq(self.freq_old)
     self.buzzer.duty(0)
   
   def set_volume(self, level=15):
@@ -21,14 +26,6 @@ class Buzzer:
   
   def map(self, x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-    
-  def set_Buzzer(self,s):
-    self.buzzer.duty(30)
-    time.sleep_ms(s)
-    self.buzzer.duty(0)
-    
-  def setBuzzer(self,s):
-    thread.start_new_thread(self.set_Buzzer, (s,))
   
 
 if __name__ == "__main__":
@@ -38,3 +35,4 @@ if __name__ == "__main__":
     time.sleep_ms(300)
     buz.off()
     time.sleep_ms(300)
+    

@@ -11,16 +11,17 @@ from ColorSensor import ColorSensor
 
 class Robot:
   
-  def __init__(self, nozzle=False, mimic=True):
+  def __init__(self, nozzle=False, run_startup=True, mimic=True):
+    self.buz = Buzzer()
+    self.led = LED()
+    
     if nozzle:
-      self.nozzle = SuctionNozzle()
+      self.end_effector = SuctionNozzle()
     else:
       self.end_effector = MultiCardHolder()
 
     self.arm = Arm()
-    self.buz = Buzzer()
-    self.led = LED()
-
+    
     self.LED_seg_disp = LEDDigitDisplay(clk=Pin(33), dio=Pin(32))
     self.LED_mat_disp = LEDMatrixDisplay(clk=Pin(22), dio=Pin(23))
     
@@ -29,16 +30,22 @@ class Robot:
     self.RGB_sensor.enableLightSensor(True)
     self.RGB_sensor.setAmbientLightGain(3)
     
-    self.LED_mat_disp.robot_start_up_animation()
-    
     self.mimic = mimic
-    self.mimic_position(self.mimic)
+    
+    if run_startup:
+      self.rob_reset()
   
   def rob_reset(self):
+      self.rob_reset_arm()
+      self.LED_seg_disp.tube_display("----")
+      self.mimic_position(self.mimic)
+  
+  def rob_reset_arm(self):
     self.arm.go_home()
     time.sleep_ms(2000)
     self.arm.teaching_mode()
-    self.end_effector.set_angle(0)
+    self.end_effector.move_to_with_speed(0)
+    self.end_effector.teaching_mode()
   
   def mimic_position(self, mimicFlag):
     self.mimic = mimicFlag
@@ -51,44 +58,4 @@ class Robot:
       self.LED_mat_disp.mimic_robot(self.arm)
       time.sleep_ms(200)
     self.LED_mat_disp.update_display()
-
-  def test(self):
-    self.arm.set_position_with_speed((0, 130, 200), 0.3)
-    for i in range(3):
-      self.end_effector.set_card(i)
-      time.sleep_ms(500)
-      self.arm.set_position_with_speed((0, 230, 190), 0.3)
-      time.sleep_ms(1500)
-      self.arm.set_position_with_speed((0, 130, 200), 0.3)
-      time.sleep_ms(2000)
-    rob.arm.teaching_mode()
-
-
-if __name__ == "__main__":
-  rob = Robot()
-  rob.test()
   
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

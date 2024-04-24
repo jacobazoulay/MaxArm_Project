@@ -2,7 +2,6 @@ import time, ustruct
 from machine import Pin,UART
 from micropython import const
 
-
 SERVO_MOVE_TIME_WRITE       = const(1)
 SERVO_MOVE_TIME_READ        = const(2)
 SERVO_POS_READ              = const(28)
@@ -274,20 +273,3 @@ class BusServo:
     if self.servo_receive_handle():
       return ustruct.unpack('b',ustruct.pack('B',self.rx_buf[5]))[0]
     return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

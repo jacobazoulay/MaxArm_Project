@@ -2,7 +2,6 @@ from micropython import const
 from ColorCONST import *
 from time import sleep
 
-
 R_F = const(8500)
 G_F = const(13000)
 B_F = const(16600)
@@ -619,9 +618,3 @@ class ColorSensor:
   def _read_i2c_block_data(self, cmd, num):
     return self.bus.readfrom_mem(self.address, cmd, num)
   
-
-
-
-
-
-

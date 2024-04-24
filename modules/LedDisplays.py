@@ -17,7 +17,7 @@ tube_font_letters = {
     'S': 0x6D, 'T': 0x78, 'U': 0x3E, 'V': 0x1C, 'W': 0x2A, 'X': 0x76,
     'Y': 0x6E, 'Z': 0x5B, '0': 0x3f, '1': 0x06, '2': 0x5b, '3': 0x4f,
     '4': 0x66, '5': 0x6d, '6': 0x7d, '7': 0x07, '8': 0x7f, '9': 0x6f,
-    ' ': 0x00, "_": 0x08
+    ' ': 0x00, "_": 0x08, '-': 0x40
 }
 
 
@@ -331,20 +331,3 @@ class DisplayAnimator():
         grid = self.generate_raw_frame(angles)
         out = self.conv_frame(grid)
         return out
-
-
-def test():
-    led_dig_display = LEDDigitDisplay(clk=Pin(33), dio=Pin(32))
-    for i in range(1000):
-        led_dig_display.tube_display(i)
-
-def testmat2():
-    frames=[[63, 63, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [63, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 192, 192, 254, 254, 194, 194, 2, 2, 2, 6, 0, 0, 0, 0]]
-    mat = LEDMatrixDisplay(clk=Pin(22), dio=Pin(23))
-    for frame in frames:
-        mat.write(frame)
-        time.sleep(0.4)
-
-if __name__ == "__main__":
-    test()
-

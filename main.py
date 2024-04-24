@@ -3,11 +3,7 @@ import sys
 sys.path.append('/modules')
 
 import time
-from machine import Pin
 import _thread as thread
-from LedDisplays import LEDDigitDisplay
-from Buzzer import Buzzer
-from Led import LED
 from Robot import Robot
 
 
@@ -25,15 +21,19 @@ def buz_led_reset(rob: Robot):
 def display_welcome_msg(rob: Robot):
     led_dig_disp = rob.LED_seg_disp
     led_dig_disp.tube_display("    Hello Robot", scroll_speed_ms=150)
-
-def reset():
-    rob = Robot()
+    led_dig_disp.tube_display("----")
     
-    thread.start_new_thread(rob.rob_reset, ())
+def start_up_animation(rob: Robot):
+    rob.LED_mat_disp.robot_start_up_animation()
+
+def reset(rob: Robot):
+     
+    thread.start_new_thread(rob.rob_reset_arm, ())
     thread.start_new_thread(buz_led_reset, [rob])
     thread.start_new_thread(display_welcome_msg, [rob])
+    thread.start_new_thread(start_up_animation, [rob])
     
 
 if __name__ == "__main__":
-    reset()
-
+    rob = Robot(run_startup=False, mimic=True)
+    reset(rob)

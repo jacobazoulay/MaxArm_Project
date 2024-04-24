@@ -1,6 +1,5 @@
 import time
-from machine import Pin, I2C
-from micropython import const
+from machine import Pin
 from Robot import Robot
 
 

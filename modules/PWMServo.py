@@ -1,91 +1,54 @@
 from machine import Pin, Timer
-from HiwonderV2 import PWM#该PWM的duty范围0~16383
+from machine import PWM
 import time
-
-PWMServo_IO_list = [15,4]
 
 
 class PWMServo:
-  def __init__(self,PWMServo_IO_list = PWMServo_IO_list,first_id_is_one = True):
+    def __init__(self, pin=15, min_angle=-90, max_angle=90, freq=50):
+        self.pin = pin
+        self.min_angle = min_angle
+        self.max_angle = max_angle
+        self.min_duty = int(freq * 0.46)
+        self.max_duty = int(freq * 2.56)
+        self.freq = freq
+        self.pwm = PWM(Pin(pin), freq=freq)
+        self.move_to_with_speed(0)
 
-    self.servo = []
-    self.servo_pwm_duty_now = []
-    self.servo_pwm_duty_set = []
-    self.servo_pwm_duty_inc = []
-    self.servo_run_time = 20
-    self.servo_pwm_duty_have_changed = False
-    self.f_work_with_time = False
-    
-    self.ServoPwmDutyIncTimes = 0
-    self.ServoRunning = False
-    
-    if first_id_is_one == True:
-        self.servo.append(None)
-        self.servo_pwm_duty_now.append(None)
-        self.servo_pwm_duty_set.append(None)
-        self.servo_pwm_duty_inc.append(None)
-    
-    for io in PWMServo_IO_list:
-      self.servo.append(PWM(Pin(io), freq=50, duty=0))
-      self.servo_pwm_duty_now.append(0)
-      self.servo_pwm_duty_set.append(0)
-      self.servo_pwm_duty_inc.append(0)
+    def angle_to_duty(self, angle):
+        # Map angle to duty cycle within the specified range
+        return int(((angle - self.min_angle) / (self.max_angle - self.min_angle)) * (self.max_duty - self.min_duty) + self.min_duty)
+
+    def duty_to_angle(self, duty):
+        # Map duty cycle to angle within the specified range
+        return int((duty - self.min_duty) / (self.max_duty - self.min_duty) * (self.max_angle - self.min_angle) + self.min_angle)
+
+    def set_angle(self, angle):
+        # Clip angle to be within the range of min_angle and max_angle
+        angle = max(self.min_angle, min(angle, self.max_angle))
+        
+        duty = self.angle_to_duty(angle)
+        self.pwm.duty(duty)
+
+    def move_to(self, end_angle, duration_ms, steps=100):
+        start_angle = self.get_current_angle()
+        angle_difference = end_angle - start_angle
+        step_angle = angle_difference / steps
+        delay = duration_ms // steps
       
-  def conver_duty(self, input):
-    return (int(input * 16383 / 20000))
+        for _ in range(steps):
+            start_angle += step_angle
+            self.set_angle(start_angle)
+            time.sleep_ms(delay)
     
-  def run(self, id, p, servo_run_time = 1000):
-    if servo_run_time < 20:servo_run_time = 20
-    if servo_run_time > 30000:servo_run_time = 30000
-    if p < 400 or p > 2600:
-      return False
-    self.servo_run_time = servo_run_time
-    self.servo_pwm_duty_set[id] = p
-    self.servo_pwm_duty_have_changed = True
-    if self.f_work_with_time == False:
-      self.servo_pwm_duty_now[id] = p
-      self.servo[id].duty(self.conver_duty(p))
-  
-  def run_mult(self, pp, servo_run_time):
-    for p in enumerate(pp):
-      if self.servo[0] == None:
-        self.run(p[0] + 1, p[1], servo_run_time)
-      else:
-        self.run(p[0], p[1], servo_run_time)
-  def work_with_time(self):
-    self.f_work_with_time = True
-    self.tim = Timer(3)
-    self.tim.init(period=20, mode=Timer.PERIODIC, callback=self.callback)
+    def move_to_with_speed(self, end_angle, speed_deg_per_s=375):
+        start_angle = self.get_current_angle()
+        angle_difference = abs(end_angle - start_angle)
+        duration_ms = int(angle_difference / (speed_deg_per_s / 1000))
+        self.move_to(end_angle, duration_ms)
 
-  def callback(self,t):
-    if self.servo_pwm_duty_have_changed:
-      self.servo_pwm_duty_have_changed = False
-      self.ServoPwmDutyIncTimes = self.servo_run_time // 20
-
-      for item in enumerate(zip(self.servo_pwm_duty_now, self.servo_pwm_duty_set)):
-        if item[1][0] != None:
-          self.servo_pwm_duty_inc[item[0]] = (item[1][0] - item[1][1]) / self.ServoPwmDutyIncTimes
-      self.ServoRunning = True
-    
-    if self.ServoRunning:
-      self.ServoPwmDutyIncTimes -= 1
-      for item in enumerate(zip(self.servo_pwm_duty_inc,self.servo_pwm_duty_set)):
-        if item[1][0] != None:
-          if self.ServoPwmDutyIncTimes == 0:
-            self.servo_pwm_duty_now[item[0]] = item[1][1]
-            self.ServoRunning = False
-          else:
-            self.servo_pwm_duty_now[item[0]] = item[1][1] + int(item[1][0] * self.ServoPwmDutyIncTimes)
-          self.servo[item[0]].duty(self.conver_duty(self.servo_pwm_duty_now[item[0]]))
-
-  def __del__(self):
-    self.tim.deinit()
-
-
-
-
-
-
-
-
-
+    def get_current_angle(self):
+        duty = self.pwm.duty()
+        return self.duty_to_angle(duty)
+      
+    def teaching_mode(self):
+        self.pwm.duty(0)
