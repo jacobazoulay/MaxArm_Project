@@ -1,3 +1,7 @@
+# Adding this line because somewhere in the frozen modules 'len' is assigned to an integer variable when reconnecting to the COM port,
+# overwriting the builtin function. This causes errors down stream if not corrected here
+if isinstance(len, int): del len
+
 import time
 import _thread as thread
 from machine import Pin, I2C
