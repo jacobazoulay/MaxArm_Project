@@ -43,3 +43,5 @@ def reset(rob: Robot):
 if __name__ == "__main__":
     rob = Robot(run_startup=False, mimic=True)
     reset(rob)
+    time.sleep(5)
+    rob.mimic_position(True)
