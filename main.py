@@ -38,7 +38,11 @@ def reset(rob: Robot):
     thread.start_new_thread(buz_led_reset, [rob])
     thread.start_new_thread(display_welcome_msg, [rob])
     thread.start_new_thread(start_up_animation, [rob])
-    
+
+def play():
+    from LedDisplays import SnakeGame
+    game = SnakeGame()
+    game.playGame()
 
 if __name__ == "__main__":
     rob = Robot(run_startup=False, mimic=True)

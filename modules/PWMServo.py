@@ -12,7 +12,6 @@ class PWMServo:
         self.max_duty = int(freq * 2.56)
         self.freq = freq
         self.pwm = PWM(Pin(pin), freq=freq)
-        self.move_to_with_speed(0)
 
     def angle_to_duty(self, angle):
         # Map angle to duty cycle within the specified range
@@ -45,6 +44,8 @@ class PWMServo:
         angle_difference = abs(end_angle - start_angle)
         duration_ms = int(angle_difference / (speed_deg_per_s / 1000))
         self.move_to(end_angle, duration_ms)
+        time.sleep_ms(duration_ms)
+        self.teaching_mode()
 
     def get_current_angle(self):
         duty = self.pwm.duty()

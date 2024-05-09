@@ -11,14 +11,16 @@ class MultiCardHolder(PWMServo):
 
   def set_card(self, slot):
     if slot == 0:
-      self.move_to_with_speed(-90)
+      self.set_angle(-90)
     elif slot == 1:
-      self.move_to_with_speed(0)
+      self.set_angle(0)
     elif slot == 2:
-      self.move_to_with_speed(90)
+      self.set_angle(90)
     
     else:
       raise ValueError("Slot must be integer 0, 1, or 2.")
+    time.sleep_ms(1000)
+    self.teaching_mode()
   
 
 class SuctionNozzle(PWMServo):

@@ -29,12 +29,16 @@ class Robot:
         self.LED_seg_disp = LEDDigitDisplay(clk=Pin(33), dio=Pin(32))
         self.LED_mat_disp = LEDMatrixDisplay(clk=Pin(22), dio=Pin(23))
 
-        i2c = I2C(0, scl=Pin(16), sda=Pin(17), freq=100000)
-        self.RGB_sensor = ColorSensor(i2c)
-        self.RGB_sensor.enableLightSensor(True)
-        self.RGB_sensor.setAmbientLightGain(3)
-        self.RGB_sensor.last_reading = None
+        try:
+            i2c = I2C(0, scl=Pin(16), sda=Pin(17), freq=100000)
+            self.RGB_sensor = ColorSensor(i2c)
+            self.RGB_sensor.enableLightSensor(True)
+            self.RGB_sensor.setAmbientLightGain(3)
+        except OSError:
+            print("Color sensor not found. Functionality limited.")
+            self.RGB_sensor = None
 
+        self.RGB_last_reading = "no reading"
         self.mimic = mimic
 
         if run_startup:
@@ -49,21 +53,7 @@ class Robot:
         self.arm.go_home()
         time.sleep_ms(2000)
         self.arm.teaching_mode()
-        self.end_effector.move_to_with_speed(0)
-        self.end_effector.teaching_mode()
-
-    def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
-        self.arm.set_position_with_speed((0, 130, 200), 0.3)
-        for _ in range(num):
-            s = "crd" + str(slot + 1)
-            self.LED_seg_disp.tube_display(s)
-            self.end_effector.set_card(slot)
-            time.sleep_ms(500)
-            self.arm.set_position_with_speed((0, 230, 190), 0.3)
-            time.sleep_ms(press_dur)
-            self.arm.set_position_with_speed((0, 130, 200), 0.3)
-            time.sleep_ms(retract_dur)
-        self.arm.teaching_mode()
+        self.end_effector.set_card(1)
 
     def mimic_position(self, mimicFlag):
         self.mimic = mimicFlag
@@ -78,6 +68,9 @@ class Robot:
         self.LED_mat_disp.update_display()
 
     def readRGB(self, timeout):
+        if self.RGB_sensor is None:
+            self.RGB_last_reading = "No color sensor detected"
+            return
         low = self.RGB_sensor.readRGBLight()
         thresh = 2 * max(low[0], low[1], low[2])
         meas = ['n']
@@ -104,26 +97,34 @@ class Robot:
                         'n': 'no reading'}
 
         result = color_decode[meas[-1]]
-        self.RGB_sensor.last_reading = result
+        self.RGB_last_reading = result
 
         self.LED_mat_disp.display_reader_result(result)
-
-    def presentCardCycleTest(self, slot, num=1, press_dur=1500, retract_dur=2000):
-        self.mimic_position(False)
-        self.arm.set_position_with_speed((0, 130, 200), 0.3)
+    
+    def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
+        if self.RGB_sensor is not None: #If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
+            self.mimic_position(False)
+            
+        self.arm.set_position_with_speed((0, 130, 190), 0.3)
+        self.LED_seg_disp.tube_display("crd" + str(slot + 1))
         self.end_effector.set_card(slot)
-        time.sleep_ms(500)
+        
         for i in range(num):
-            self.LED_seg_disp.tube_display(i + 1)
+            s = ("crd" + str(slot + 1)) if (num <= 3) else (i + 1)
+            self.LED_seg_disp.tube_display(s)
+            
             thread.start_new_thread(self.readRGB, [press_dur + retract_dur])
-            self.arm.set_position_with_speed((0, 230, 190), 0.3)
+            
+            self.arm.set_position_with_speed((0, 230, 180), 0.3)
             time.sleep_ms(press_dur)
-            self.arm.set_position_with_speed((0, 130, 200), 0.3)
+            self.arm.set_position_with_speed((0, 130, 190), 0.3)
             time.sleep_ms(retract_dur)
-            print("Presentation Number: {}      Reading: {}".format(i+1, self.RGB_sensor.last_reading))
+            print("Presentation Number: {}      Reading: {}".format(i+1, self.RGB_last_reading))
+            
         self.arm.teaching_mode()
         self.mimic_position(True)
 
+
 if __name__ == "__main__":
     rob = Robot()
-    rob.presentCardCycleTest(1, num=1)
+    rob.presentCard(1, num=1)
