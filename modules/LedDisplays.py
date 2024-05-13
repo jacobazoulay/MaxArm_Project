@@ -372,8 +372,14 @@ class Snake():
         self.completed_eating = False
         self.score = 0
         self.victory = False
+        self.last_move = 'd'
+        self.frame = [[0] * 8 for _ in range(16)]
+        for item in [self.head, self.food] + self.tail:
+            x, y = item[0], item[1]
+            self.frame[x][y] = 1
     
     def move(self, dir):
+        self.last_move = dir
         if dir == 'w':
             delta = (0, 1)
         elif dir == 's':
@@ -383,10 +389,14 @@ class Snake():
         elif dir == 'a':
             delta = (-1, 0)
         
+        self.frame[self.tail[-1][0]][self.tail[-1][1]] = 0
+        
         self.tail.insert(0, self.head)
         self.tail.pop()
             
         self.head = [(self.head[0] + delta[0]) % (WIDTH), (self.head[1] + delta[1]) % (HEIGHT)]
+        self.frame[self.head[0]][self.head[1]] = 1
+        
     
     def checkColision(self):
         if self.head in self.tail:
@@ -397,6 +407,7 @@ class Snake():
             self.score += 1
             self.food_old.append(self.food)
             self.food = self.generate_random_point()
+            self.frame[self.food[0]][self.food[1]] = 1
             
     def grow(self):
         if self.completed_eating:
@@ -432,46 +443,53 @@ class SnakeGame():
         self.keyPress = 'd'
         thread.start_new_thread(self.readKeyInput, ())
         
-    def playGame(self):
+    def playGame(self, auto=False):
         count = 0
+        key_count = -3
         while self.snake.alive:
             self.led_digit.tube_display(self.snake.score)
             if count % 2 == 0:
-                self.displayFrame(show_food=False)
+                self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 0
+                self.displayFrame()
             else:
+                self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 1
+                if auto:
+                    if key_count % 16 == 0 or key_count % 16 == 8:
+                        self.keyPress = 'd'
+                    elif key_count % 16 < 8:
+                        self.keyPress = 's'
+                    else:
+                        self.keyPress = 'w'
+                    key_count += 1
                 self.snake.move(self.keyPress)
                 self.snake.checkColision()
                 self.snake.eat()
                 self.snake.grow()
-                self.displayFrame(show_food=True)
-            time.sleep_ms(75)
+                self.displayFrame()
+            time.sleep_ms(30)
             count += 1
         self.game_over()
     
     def game_over(self):
-        self.led_matrix.display_flash(self.displayFrame())
-        self.led_digit.tube_display_flash(self.snake.score)
+        self.led_matrix.display_flash(self.displayFrame(), 3)
+        self.led_digit.tube_display_flash(self.snake.score, 3)
         print("Game Over")
     
     def readKeyInput(self):
+        rev_dir_keys = {'a': 'd',
+                        's': 'w',
+                        'd': 'a',
+                        'w': 's'}
         while self.snake.alive:
             inKey = sys.stdin.read(1)
             if inKey in ['a', 's', 'd', 'w']:
-                self.keyPress = inKey
+                if inKey != rev_dir_keys[self.snake.last_move]:
+                    self.keyPress = inKey
             if inKey == 'q':
                 self.snake.alive = False
                 return
-            time.sleep_ms(50)
     
-    def displayFrame(self, show_food=True):
-        grid = [[0] * 8 for _ in range(16)]
-        if show_food:
-            objs = [self.snake.head, self.snake.food] + self.snake.tail
-        else:
-            objs = [self.snake.head] + self.snake.tail
-        for item in objs:
-            grid[item[0]][item[1]] = 1
-            out = self.disp_animator.conv_frame(grid)
+    def displayFrame(self):
+        out = self.disp_animator.conv_frame(self.snake.frame)
         self.led_matrix.write(out)
         return out
-        
