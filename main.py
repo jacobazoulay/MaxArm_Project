@@ -39,13 +39,19 @@ def reset(rob: Robot):
     thread.start_new_thread(display_welcome_msg, [rob])
     thread.start_new_thread(start_up_animation, [rob])
 
-def play(auto=False):
-    from LedDisplays import SnakeGame
-    game = SnakeGame()
-    game.playGame(auto)
+def play(game_num=1, auto=False):
+    if game_num == 1:
+        from Games import SnakeGame
+        game = SnakeGame()
+        game.playGame(auto)
+    elif game_num == 2:
+        from Games import JumperGame
+        game = JumperGame()
+        game.playGame()
+        
 
 if __name__ == "__main__":
-    rob = Robot(run_startup=False, mimic=True)
+    rob = Robot(run_startup=False, mimic=False)
     reset(rob)
     time.sleep(5)
-    rob.mimic_position(True)
+    rob.mimic_position(False)
