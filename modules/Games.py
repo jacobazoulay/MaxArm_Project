@@ -90,35 +90,44 @@ class SnakeGame():
         thread.start_new_thread(self.readKeyInput, ())
         
     def playGame(self, auto=False):
-        count = 0
-        key_count = -3
-        while self.snake.alive:
-            self.led_digit.tube_display(self.snake.score)
-            if count % 2 == 0:
-                self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 0
-                self.displayFrame()
-            else:
-                self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 1
-                if auto:
-                    if key_count % 16 == 0 or key_count % 16 == 8:
-                        self.keyPress = 'd'
-                    elif key_count % 16 < 8:
-                        self.keyPress = 's'
-                    else:
-                        self.keyPress = 'w'
-                    key_count += 1
-                self.snake.move(self.keyPress)
-                self.snake.checkColision()
-                self.snake.eat()
-                self.snake.grow()
-                self.displayFrame()
-            time.sleep_ms(30)
-            count += 1
-        self.game_over()
+        try:
+            count = 0
+            key_count = -3
+            while self.snake.alive:
+                self.led_digit.tube_display(self.snake.score)
+                if count % 2 == 0:
+                    self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 0
+                    self.displayFrame()
+                else:
+                    self.snake.frame[self.snake.food[0]][self.snake.food[1]] = 1
+                    if auto:
+                        if key_count % 16 == 0 or key_count % 16 == 8:
+                            self.keyPress = 'd'
+                        elif key_count % 16 < 8:
+                            self.keyPress = 's'
+                        else:
+                            self.keyPress = 'w'
+                        key_count += 1
+                    self.snake.move(self.keyPress)
+                    self.snake.checkColision()
+                    self.snake.eat()
+                    self.snake.grow()
+                    self.displayFrame()
+                time.sleep_ms(30)
+                count += 1
+            self.game_over()
+        except Exception as e:
+            self.snake.alive = False
+            time.sleep_ms(500)
+            raise e
     
     def game_over(self):
-        self.led_matrix.display_flash(self.displayFrame(), 3)
-        self.led_digit.tube_display_flash(self.snake.score, 3)
+        game = [0x5c, 0x54, 0x7c, 0x00, 0x7c, 0x14, 0x7c, 0x00, 0x7c, 0x08, 0x7c, 0x00, 0x7c, 0x54, 0x44, 0x00]
+        over = [0x7c, 0x44, 0x7c, 0x00, 0x1c, 0x60, 0x1c, 0x00, 0x7c, 0x54, 0x44, 0x00, 0x7c, 0x34, 0x5c, 0x00]
+        self.led_matrix.display_flash(self.displayFrame(), 2)
+        self.led_matrix.display_flash(game, 1)
+        self.led_matrix.display_flash(over, 1)
+        self.led_matrix.update_display()
         print("Game Over")
     
     def readKeyInput(self):
@@ -150,7 +159,6 @@ class Jumper():
         self.v = 0
         self.ground = 1
         self.pos = [4, self.ground + 2]
-        self.draw_ground()
     
     def erase_body(self):
         x, y = self.pos[0], round(self.pos[1])
@@ -168,7 +176,7 @@ class Jumper():
 
     def jump(self):
         self.a = -0.2
-        self.v = 1.2
+        self.v = 1.15
     
     def draw_ground(self):
         for x in range(WIDTH):
@@ -182,8 +190,8 @@ class Jumper():
         self.erase_body()
         self.v += self.a
         self.pos[1] += self.v
-        if self.pos[1] > 7:
-            self.pos[1] = 7
+        if self.pos[1] > HEIGHT - 1:
+            self.pos[1] = HEIGHT - 1
         if self.pos[1] < self.ground + 2:
             self.pos[1] = self.ground + 2
             self.v = 0
@@ -208,6 +216,7 @@ class JumperGame():
         self.disp_animator = DisplayAnimator()
         self.jumper = Jumper()
         self.obstacles = []
+        self.new_obs_timer = 0
         thread.start_new_thread(self.readKeyInput, ())
         
     def playGame(self):
@@ -219,6 +228,7 @@ class JumperGame():
                 self.displayFrame()
                 time.sleep_ms(30)
                 self.jumper.score += 1
+                self.new_obs_timer += 1
                 self.jumper.check_collision(self.obstacles)
             self.game_over()
         
@@ -227,10 +237,13 @@ class JumperGame():
             time.sleep_ms(500)
             raise e
             
-    
     def game_over(self):
-        self.led_matrix.display_flash(self.displayFrame(), 3)
-        self.led_digit.tube_display_flash(self.jumper.score, 3)
+        game = [0x5c, 0x54, 0x7c, 0x00, 0x7c, 0x14, 0x7c, 0x00, 0x7c, 0x08, 0x7c, 0x00, 0x7c, 0x54, 0x44, 0x00]
+        over = [0x7c, 0x44, 0x7c, 0x00, 0x1c, 0x60, 0x1c, 0x00, 0x7c, 0x54, 0x44, 0x00, 0x7c, 0x34, 0x5c, 0x00]
+        self.led_matrix.display_flash(self.displayFrame(), 2)
+        self.led_matrix.display_flash(game, 1)
+        self.led_matrix.display_flash(over, 1)
+        self.led_matrix.update_display()
         print("Game Over")
         
     def readKeyInput(self):
@@ -252,9 +265,10 @@ class JumperGame():
         self.obstacles = [obs for obs in self.obstacles if obs[0] >= 0]
 
         # Add a new obstacle occasionally
-        if random.randint(0, 20) == 0:
+        if self.new_obs_timer > (40 - self.jumper.score / 20) and random.randint(0, 5) == 0:
             new_obstacle_pos = [15, random.randint(self.jumper.ground + 1, 7)] # New obstacle at the far right
             self.obstacles.append(new_obstacle_pos)
+            self.new_obs_timer = 0
         
         # Draw obstacles on the frame
         for obs in self.obstacles:
