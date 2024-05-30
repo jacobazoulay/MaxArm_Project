@@ -39,7 +39,9 @@ class Robot:
             self.RGB_sensor = None
 
         self.RGB_last_reading = "no reading"
-        self.mimic = mimic
+        
+        self.mimic = None
+        self.mimic_position(mimic)
 
         if run_startup:
             self.rob_reset()
@@ -47,7 +49,6 @@ class Robot:
     def rob_reset(self):
         self.rob_reset_arm()
         self.LED_seg_disp.tube_display("----")
-        self.mimic_position(self.mimic)
 
     def rob_reset_arm(self):
         self.arm.go_home()
@@ -56,6 +57,8 @@ class Robot:
         self.end_effector.set_card(1)
 
     def mimic_position(self, mimicFlag):
+        if mimicFlag == self.mimic:
+            return #prevents starting multiple threads if mimic already set
         self.mimic = mimicFlag
         if self.mimic:
             thread.start_new_thread(self._mimic_loop, ())
@@ -64,7 +67,7 @@ class Robot:
         time.sleep(1)
         while self.mimic:
             self.LED_mat_disp.mimic_robot(self.arm)
-            time.sleep_ms(200)
+            # time.sleep_ms(300)
         self.LED_mat_disp.update_display()
 
     def readRGB(self, timeout):
@@ -102,6 +105,7 @@ class Robot:
         self.LED_mat_disp.display_reader_result(result)
     
     def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
+        prev_mimic_flag = self.mimic
         if self.RGB_sensor is not None: #If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
             self.mimic_position(False)
             
@@ -122,7 +126,7 @@ class Robot:
             print("Presentation Number: {}      Reading: {}".format(i+1, self.RGB_last_reading))
             
         self.arm.teaching_mode()
-        self.mimic_position(True)
+        self.mimic_position(prev_mimic_flag)
 
 
 if __name__ == "__main__":

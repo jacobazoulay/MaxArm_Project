@@ -54,4 +54,3 @@ if __name__ == "__main__":
     rob = Robot(run_startup=False, mimic=False)
     reset(rob)
     time.sleep(5)
-    rob.mimic_position(False)

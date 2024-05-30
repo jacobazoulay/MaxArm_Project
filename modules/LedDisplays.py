@@ -274,12 +274,12 @@ class LEDMatrixDisplay(TM1640):
         for frame in frames:
             self.write(frame)
             time.sleep_ms(50)
+        self.update_display()
     
     def mimic_robot(self, arm: Robot.arm):
         joints = arm.read_angles()
         frame = self.display_animator.generate_frame(joints)
         self.write(frame)
-        time.sleep_ms(100)
 
 
 class DisplayAnimator():
