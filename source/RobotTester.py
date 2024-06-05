@@ -42,7 +42,7 @@ def checkColor():
             led_seg_disp.tube_display("none")
         # time.sleep_ms(25)
 
-        print(str(r) + ", " + str(g) + ", " + str(b))
+        print("(" + str(r) + ", " + str(g) + ", " + str(b) + "),")
 
 
 def cycle7SegDisp():

@@ -71,38 +71,65 @@ class Robot:
         self.LED_mat_disp.update_display()
 
     def readRGB(self, timeout):
+        self.thread_running = True
         if self.RGB_sensor is None:
             self.RGB_last_reading = "No color sensor detected"
+            self.thread_running = False
             return
-        low = self.RGB_sensor.readRGBLight()
-        thresh = 2 * max(low[0], low[1], low[2])
-        meas = ['n']
-        has_turned_on = False
 
-        now = time.time()
-        while time.time() - now < (timeout / 1000) * 0.9:
-            rgb = self.RGB_sensor.readRGBLight()
-            if rgb[0] > thresh or rgb[1] > thresh or rgb[2] > thresh:
-                has_turned_on = True
-                if rgb[0] > rgb[1] and rgb[0] > rgb[2] and meas[-1] != 'r':
+        thresh = 250
+        meas = ['start']
+        
+        start_time = time.time()
+        timeout_duration = (timeout / 1000) * 0.8
+
+        while time.time() - start_time < timeout_duration:
+            r, g, b = self.RGB_sensor.readRGBLight()
+            # print("(" + str(r) + ", " + str(g) + ", " + str(b) + ")")
+            if max(r, g, b) > thresh: #if the light is on
+                if r > g and r > b and g > 0.33 * r and meas[-1] != 'y':
+                    meas.append('y')
+                elif r > g and r > b and g <= 0.33 * r and meas[-1] != 'r':
                     meas.append('r')
-                elif rgb[1] > rgb[0] and rgb[1] > rgb[2] and meas[-1] != 'g':
+                elif g > r and g > b and meas[-1] != 'g':
                     meas.append('g')
-                elif rgb[2] > rgb[0] and rgb[2] > rgb[1] and meas[-1] != 'b':
+                elif b > r and b > g and meas[-1] != 'b':
                     meas.append('b')
-            else:
-                if has_turned_on:
-                    break
-
-        color_decode = {'r': 'declined',
-                        'g': 'granted',
-                        'b': 'lockout',
-                        'n': 'no reading'}
-
-        result = color_decode[meas[-1]]
+            else: #if the light is off
+                if meas[-1] != 'n':
+                    meas.append('n')
+        
+        color_decode = {('start', 'n', 'r', 'n'):                     'declined',
+                        ('start', 'y', 'n', 'r', 'n'):                'declined',
+                        ('start', 'n', 'r', 'y', 'n'):                'declined',
+                        ('start', 'n', 'y', 'r', 'n'):                'declined',
+                        ('start', 'n', 'r', 'n', 'r', 'n'):           'declined',
+                             
+                        ('start', 'n', 'g', 'n'):                     'granted',
+                        ('start', 'y', 'n', 'g', 'n'):                'granted',
+                        ('start', 'n', 'r', 'n', 'g', 'n'):           'granted',
+                             
+                        ('start', 'n', 'r', 'b', 'n'):                'lockout',
+                        ('start', 'n', 'r', 'n', 'b', 'n'):           'lockout',
+                        ('start', 'n', 'r', 'n', 'r', 'b', 'n'):      'lockout',
+                        ('start', 'n', 'r', 'y', 'b', 'n'):           'lockout',
+                        ('start', 'n', 'r', 'n', 'r', 'n', 'b', 'n'): 'lockout',
+                        
+                        ('start', 'n', 'y'):                          'waiting',
+                        ('start', 'n', 'y', 'n'):                     'waiting',
+                        ('start', 'n', 'r', 'y'):                     'waiting',
+                             
+                        ('start', 'n'):                               'no reading'}
+        
+        if tuple(meas) in color_decode:
+            result = color_decode[tuple(meas)]
+        else:
+            result = "unrecognized"
         self.RGB_last_reading = result
 
         self.LED_mat_disp.display_reader_result(result)
+        print(meas)
+        self.thread_running = False
     
     def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
         prev_mimic_flag = self.mimic
@@ -123,6 +150,8 @@ class Robot:
             time.sleep_ms(press_dur)
             self.arm.set_position_with_speed((0, 130, 190), 0.3)
             time.sleep_ms(retract_dur)
+            while self.thread_running:
+                time.sleep_ms(100)
             print("Presentation Number: {}      Reading: {}".format(i+1, self.RGB_last_reading))
             
         self.arm.teaching_mode()
