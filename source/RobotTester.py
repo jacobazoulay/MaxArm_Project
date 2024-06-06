@@ -5,6 +5,7 @@ if isinstance(len, int): del len
 import time
 from machine import Pin
 from Robot import Robot
+import random
 
 
 def cycleCards(num=1, press_dur=1500, retract_dur=2000):
@@ -95,6 +96,40 @@ def learnArmPos():
     print(positions)
     rob.LED_seg_disp.tube_display_flash(len(positions), num_flash=3, flash_speed=750)
     rob.LED_seg_disp.update_display()
+
+def cycleCardsRandom(num=1, press_dur=1500, retract_dur=2000):
+    rob = Robot()
+    rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+    prevs = [-1, -1, -1]
+    for cycle in range(num):
+        
+        if prevs == [0, 0, 0]:
+            t = 90
+            print("Lockout detected. Pausing for " + str(t) + " seconds.\n" )
+            time.sleep(t)
+            prevs = [-1, -1, -1]
+            
+        if random.random() < 0.5:
+            slot = 0
+            grntd_denied = "denied"
+        else:
+            slot = 1
+            grntd_denied = "granted"
+        print("Presentation number " + str(cycle + 1))
+        print("Credential type: access " + grntd_denied + " (slot " + str(slot + 1) + ")\n")
+        rob.LED_seg_disp.tube_display(cycle + 1)
+        
+        rob.end_effector.set_card(slot)
+        time.sleep_ms(500)
+        rob.arm.set_position_with_speed((0, 230, 190), 0.3)
+        time.sleep_ms(press_dur)
+        rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+        time.sleep_ms(retract_dur)
+        
+        prevs.append(slot)
+        prevs.pop(0)
+        
+    rob.arm.teaching_mode()
 
 
 def main():

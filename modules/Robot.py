@@ -14,7 +14,8 @@ from ColorSensor import ColorSensor
 
 
 class Robot:
-
+    _class_lock = thread.allocate_lock()
+    _mimic = None
     def __init__(self, nozzle=False, run_startup=True, mimic=True):
         self.buz = Buzzer()
         self.led = LED()
@@ -40,11 +41,14 @@ class Robot:
 
         self.RGB_last_reading = "no reading"
         
-        self.mimic = None
         self.mimic_position(mimic)
 
         if run_startup:
             self.rob_reset()
+    
+    def __del__(self):
+        self.mimic_position(False)
+        time.sleep_ms(100)
 
     def rob_reset(self):
         self.rob_reset_arm()
@@ -57,18 +61,21 @@ class Robot:
         self.end_effector.set_card(1)
 
     def mimic_position(self, mimicFlag):
-        if mimicFlag == self.mimic:
-            return #prevents starting multiple threads if mimic already set
-        self.mimic = mimicFlag
-        if self.mimic:
+        if mimicFlag is False:
+            Robot._mimic = False
+            return
+        if mimicFlag is True:
+            if Robot._class_lock.locked(): 
+                print ("Unable to mimic position because matrix is used by another resource.")
+                return
             thread.start_new_thread(self._mimic_loop, ())
 
     def _mimic_loop(self):
-        time.sleep(1)
-        while self.mimic:
-            self.LED_mat_disp.mimic_robot(self.arm)
-            # time.sleep_ms(300)
-        self.LED_mat_disp.update_display()
+        with Robot._class_lock:
+            Robot._mimic = True
+            while Robot._mimic:
+                self.LED_mat_disp.mimic_robot(self.arm)
+            self.LED_mat_disp.update_display()
 
     def readRGB(self, timeout):
         self.thread_running = True
@@ -132,7 +139,7 @@ class Robot:
         self.thread_running = False
     
     def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
-        prev_mimic_flag = self.mimic
+        prev_mimic_flag = self._mimic
         if self.RGB_sensor is not None: #If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
             self.mimic_position(False)
             
