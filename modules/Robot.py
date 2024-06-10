@@ -16,6 +16,13 @@ from ColorSensor import ColorSensor
 class Robot:
     _class_lock = thread.allocate_lock()
     _mimic = None
+    _instance = None
+    
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self, nozzle=False, run_startup=True, mimic=True):
         self.buz = Buzzer()
         self.led = LED()
@@ -40,23 +47,20 @@ class Robot:
             self.RGB_sensor = None
 
         self.RGB_last_reading = "no reading"
-        
+
         self.mimic_position(mimic)
 
         if run_startup:
-            self.rob_reset()
-    
+            self.reset()
+
     def __del__(self):
         self.mimic_position(False)
         time.sleep_ms(100)
-
-    def rob_reset(self):
-        self.rob_reset_arm()
-        self.LED_seg_disp.tube_display("----")
-
-    def rob_reset_arm(self):
+        
+    def reset(self, reset_seg_disp=True):
         self.arm.go_home()
         time.sleep_ms(2000)
+        if reset_seg_disp: self.LED_seg_disp.tube_display("----")
         self.arm.teaching_mode()
         self.end_effector.set_card(1)
 
@@ -65,8 +69,8 @@ class Robot:
             Robot._mimic = False
             return
         if mimicFlag is True:
-            if Robot._class_lock.locked(): 
-                print ("Unable to mimic position because matrix is used by another resource.")
+            if Robot._class_lock.locked():
+                print("Unable to mimic position because matrix is used by another resource.")
                 return
             thread.start_new_thread(self._mimic_loop, ())
 
@@ -86,14 +90,14 @@ class Robot:
 
         thresh = 250
         meas = ['start']
-        
+
         start_time = time.time()
         timeout_duration = (timeout / 1000) * 0.8
 
         while time.time() - start_time < timeout_duration:
             r, g, b = self.RGB_sensor.readRGBLight()
             # print("(" + str(r) + ", " + str(g) + ", " + str(b) + ")")
-            if max(r, g, b) > thresh: #if the light is on
+            if max(r, g, b) > thresh:  # if the light is on
                 if r > g and r > b and g > 0.33 * r and meas[-1] != 'y':
                     meas.append('y')
                 elif r > g and r > b and g <= 0.33 * r and meas[-1] != 'r':
@@ -102,32 +106,32 @@ class Robot:
                     meas.append('g')
                 elif b > r and b > g and meas[-1] != 'b':
                     meas.append('b')
-            else: #if the light is off
+            else:  # if the light is off
                 if meas[-1] != 'n':
                     meas.append('n')
-        
-        color_decode = {('start', 'n', 'r', 'n'):                     'declined',
-                        ('start', 'y', 'n', 'r', 'n'):                'declined',
-                        ('start', 'n', 'r', 'y', 'n'):                'declined',
-                        ('start', 'n', 'y', 'r', 'n'):                'declined',
-                        ('start', 'n', 'r', 'n', 'r', 'n'):           'declined',
-                             
-                        ('start', 'n', 'g', 'n'):                     'granted',
-                        ('start', 'y', 'n', 'g', 'n'):                'granted',
-                        ('start', 'n', 'r', 'n', 'g', 'n'):           'granted',
-                             
-                        ('start', 'n', 'r', 'b', 'n'):                'lockout',
-                        ('start', 'n', 'r', 'n', 'b', 'n'):           'lockout',
-                        ('start', 'n', 'r', 'n', 'r', 'b', 'n'):      'lockout',
-                        ('start', 'n', 'r', 'y', 'b', 'n'):           'lockout',
+
+        color_decode = {('start', 'n', 'r', 'n'): 'declined',
+                        ('start', 'y', 'n', 'r', 'n'): 'declined',
+                        ('start', 'n', 'r', 'y', 'n'): 'declined',
+                        ('start', 'n', 'y', 'r', 'n'): 'declined',
+                        ('start', 'n', 'r', 'n', 'r', 'n'): 'declined',
+
+                        ('start', 'n', 'g', 'n'): 'granted',
+                        ('start', 'y', 'n', 'g', 'n'): 'granted',
+                        ('start', 'n', 'r', 'n', 'g', 'n'): 'granted',
+
+                        ('start', 'n', 'r', 'b', 'n'): 'lockout',
+                        ('start', 'n', 'r', 'n', 'b', 'n'): 'lockout',
+                        ('start', 'n', 'r', 'n', 'r', 'b', 'n'): 'lockout',
+                        ('start', 'n', 'r', 'y', 'b', 'n'): 'lockout',
                         ('start', 'n', 'r', 'n', 'r', 'n', 'b', 'n'): 'lockout',
-                        
-                        ('start', 'n', 'y'):                          'waiting',
-                        ('start', 'n', 'y', 'n'):                     'waiting',
-                        ('start', 'n', 'r', 'y'):                     'waiting',
-                             
-                        ('start', 'n'):                               'no reading'}
-        
+
+                        ('start', 'n', 'y'): 'waiting',
+                        ('start', 'n', 'y', 'n'): 'waiting',
+                        ('start', 'n', 'r', 'y'): 'waiting',
+
+                        ('start', 'n'): 'no reading'}
+
         if tuple(meas) in color_decode:
             result = color_decode[tuple(meas)]
         else:
@@ -137,32 +141,33 @@ class Robot:
         self.LED_mat_disp.display_reader_result(result)
         print(meas)
         self.thread_running = False
-    
+
     def presentCard(self, slot, num=1, press_dur=1500, retract_dur=2000):
         prev_mimic_flag = self._mimic
-        if self.RGB_sensor is not None: #If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
+        if self.RGB_sensor is not None:  # If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
             self.mimic_position(False)
-            
-        self.arm.set_position_with_speed((0, 130, 190), 0.3)
+
+        self.arm.set_position_with_speed((115, 0, 190), 0.3)
         self.LED_seg_disp.tube_display("crd" + str(slot + 1))
         self.end_effector.set_card(slot)
-        
+
         for i in range(num):
             s = ("crd" + str(slot + 1)) if (num <= 3) else (i + 1)
             self.LED_seg_disp.tube_display(s)
-            
+
             thread.start_new_thread(self.readRGB, [press_dur + retract_dur])
-            
-            self.arm.set_position_with_speed((0, 230, 180), 0.3)
+
+            self.arm.set_position_with_speed((213, 0, 180), 0.3)
             time.sleep_ms(press_dur)
-            self.arm.set_position_with_speed((0, 130, 190), 0.3)
+            self.arm.set_position_with_speed((115, 0, 190), 0.3)
             time.sleep_ms(retract_dur)
             while self.thread_running:
                 time.sleep_ms(100)
-            print("Presentation Number: {}      Reading: {}".format(i+1, self.RGB_last_reading))
-            
+            print("Presentation Number: {}      Reading: {}".format(i + 1, self.RGB_last_reading))
+
         self.arm.teaching_mode()
-        self.mimic_position(prev_mimic_flag)
+        if self.RGB_sensor is not None:
+            self.mimic_position(prev_mimic_flag)
 
 
 if __name__ == "__main__":

@@ -10,16 +10,16 @@ import random
 
 def cycleCards(num=1, press_dur=1500, retract_dur=2000):
     rob = Robot()
-    rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+    rob.arm.set_position_with_speed((115, 0, 190), 0.3)
     for cycle in range(num):
         for i in range(3):
             s = str(cycle + 1) + " " * (3 - len(str(cycle + 1))) + str(i + 1)
             rob.LED_seg_disp.tube_display(s)
             rob.end_effector.set_card(i)
             time.sleep_ms(500)
-            rob.arm.set_position_with_speed((0, 230, 190), 0.3)
+            rob.arm.set_position_with_speed((213, 0, 190), 0.3)
             time.sleep_ms(press_dur)
-            rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+            rob.arm.set_position_with_speed((115, 0, 190), 0.3)
             time.sleep_ms(retract_dur)
         rob.arm.teaching_mode()
 
@@ -99,7 +99,7 @@ def learnArmPos():
 
 def cycleCardsRandom(num=1, press_dur=1500, retract_dur=2000):
     rob = Robot()
-    rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+    rob.arm.set_position_with_speed((115, 0, 190), 0.3)
     prevs = [-1, -1, -1]
     for cycle in range(num):
         
@@ -121,9 +121,9 @@ def cycleCardsRandom(num=1, press_dur=1500, retract_dur=2000):
         
         rob.end_effector.set_card(slot)
         time.sleep_ms(500)
-        rob.arm.set_position_with_speed((0, 230, 190), 0.3)
+        rob.arm.set_position_with_speed((213, 0, 190), 0.3)
         time.sleep_ms(press_dur)
-        rob.arm.set_position_with_speed((0, 130, 200), 0.3)
+        rob.arm.set_position_with_speed((115, 0, 190), 0.3)
         time.sleep_ms(retract_dur)
         
         prevs.append(slot)

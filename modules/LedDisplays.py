@@ -279,9 +279,9 @@ class LEDMatrixDisplay(TM1640):
     
     def mimic_robot(self, arm: Robot.arm):
         try:
-            joints = arm.read_angles()
+            joints = arm.read_joints()
         except:
-            joints = (0, 90, 0)
+            joints = (0, 0, 0)
         frame = self.display_animator.generate_frame(joints)
         self.write(frame)
 
@@ -338,7 +338,7 @@ class DisplayAnimator():
     def generate_raw_frame(self, angles):
         _, j2, j3 = angles
 
-        j2 = math.radians(180 - j2)
+        j2 = math.radians(90 - j2)
         j3 = math.radians(-j3)
 
         p1 = round(self.ORIG[0] + self.L1*math.cos(j2)), round(self.ORIG[1] + self.L1*math.sin(j2))

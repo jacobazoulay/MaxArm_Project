@@ -1,182 +1,182 @@
 import time
 import math
-import __espmax
+import _thread as thread
 from BusServo import BusServo
 
-L0 = 84.0     # Ground to base
-L1 = 8.2      # Center of base out to first arm
-L2 = 128.0    # Length of first arm
-L3 = 138.0    # Length of second arm
-L4 = 16.8     # Length of third arm
+L0 = 84.0   # Ground to base
+L1 = 8.2    # Center of base out to first arm
+L2 = 128.0  # Length of first arm
+L3 = 138.0  # Length of second arm
+L4 = 16.8   # Length of third arm
+
+ORIGIN = (L1 + L3, 0, L0 + L2 - L4)
+SERVO_DIRECTION = (1, -1, 1)
 
 
 class Arm:
-    ORIGIN = 0, (L1 + L3 + L4), L0 + L2
-
+    _class_lock = thread.allocate_lock()
     def __init__(self, bus_servo=BusServo(), origin=ORIGIN):
-      self.bus_servo = bus_servo
-      self.origin = origin
-      self.position = self.origin
-      self.joints = 120, 90, 0
-      self.servos = 500, 500, 500  # [servo id 1, servo id 2, servo id 3]
-      self.last_position = self.position
-      self.distance = 0
-      self.duration = 0
-      self.L4 = L4
+        self.bus_servo = bus_servo
+        self.origin = origin
 
-    def set_servo_in_range(self, servo_id, p, duration):
-        if servo_id == 3 and p < 470:
-            p = 470
-        if servo_id == 2 and p > 700:
-            p = 700
+    def map(self, x, in_min, in_max, out_min, out_max):
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
-        self.bus_servo.run(servo_id, int(p), duration)
-        return True
-    
-    def position_to_pulses(self, position):
-        angles = __espmax.inverse(self.L4, position)
-        pulses = __espmax.deg_to_pulse(angles)
-        return pulses
-  
-    def pulses_to_position(self, pulses):
-        joints = __espmax.pulse_to_deg(pulses)
-        x,y,z = __espmax.forward(self.L4, joints)
-        return -int(x+0.5),-int(y+0.5),int(z+0.5)
-    
-    def pulses_to_angles(self, pulses):
-        joints = __espmax.pulse_to_deg(pulses)
+    def pulses_to_joints(self, pulses):
+        joints = []
+        for i, pulse in enumerate(pulses):
+            joint = self.map(pulse, 120, 880, -90, 90)
+            joint *= SERVO_DIRECTION[i]
+            joints.append(joint)
         return joints
-  
-    def set_position(self, position, duration):
-        duration = int(duration)
+
+    def joints_to_pulses(self, joints):
+        pulses = []
+        for i, joint in enumerate(joints):
+            joint *= SERVO_DIRECTION[i]
+            pulse = self.map(joint, -90, 90, 120, 880)
+            pulses.append(int(pulse))
+        return pulses
+
+    def forward(self, joints):
+        j1, j2, j3 = list(map(math.radians, joints))
+        x = (L1 + L2 * math.sin(j2) + L3 * math.cos(j3)) * math.cos(j1)
+        y = (L1 + L2 * math.sin(j2) + L3 * math.cos(j3)) * math.sin(j1)
+        z = L0 + L2 * math.cos(j2) - L3 * math.sin(j3)
+
+        position = x, y, z
+        return position
+
+    def inverse(self, position):
         x, y, z = position
-        try:
-          if z > 225:
-              z = 225
-          if math.sqrt(x ** 2 + y ** 2) < 50:
-              return None
-          angles = __espmax.inverse(self.L4, (-x, -y, z))
-          pulses = __espmax.deg_to_pulse(angles)
-          for i in range(3):
-                  ret = self.set_servo_in_range(i + 1, pulses[i], duration)
-                  if not ret:
-                      raise ValueError("{} Out of limit range".format(pulses[i]))
-          self.servos = pulses
-          self.joints = angles
-          self.position = x, y, z
-          return True
-        except:
-          return False
-    
-    def set_position_with_speed(self, position, speed):
-            old_position = self.position
-            distance = math.sqrt(sum([(position[i] - old_position[i]) ** 2 for i in range(0, 3)]))
-            duration = distance / max(speed, 0.001)
-            self.distance = distance
-            self.last_position = self.position
-            self.duration = duration
-            self.set_position(position, duration)
-    
-    def set_position_relatively(self, values, duration):
-            x, y, z = self.position
-            x_v, y_v, z_v = values
-            x += x_v
-            y += y_v
-            z += z_v
-            return self.set_position((x, y, z), duration)
-    
-    def set_servo(self, servo_id, pulse, duration):
-        if not 0 < servo_id < 4:
 
-            raise ValueError("Invalid servo id:{}".format(servo_id))
-        pulse = 0 if pulse < 0 else pulse
-        pulse = 1000 if pulse > 1000 else pulse
-        servos = list(self.servos)
-        servos[servo_id - 1] = pulse
-        joints = __espmax.pulse_to_deg(servos)
-        new_position = __espmax.forward(self.L4, joints)
-        self.set_position(new_position, duration)
+        j1 = math.atan2(y, x)
 
-    def set_servo_with_speed(self, servo_id, pulse, speed):
-        if not 0 < servo_id < 4:
-            raise ValueError("Invalid servo id:{}".format(servo_id))
-        pulse = 0 if pulse < 0 else pulse
-        pulse = 1000 if pulse > 1000 else pulse
-        servos = list(self.servos)
-        servos[servo_id - 1] = pulse
-        joints = __espmax.pulse_to_deg(servos)
-        new_position = __espmax.forward(self.L4, joints)
-        self.set_position_with_speed(new_position, speed)
+        l = (x ** 2 + y ** 2) ** 0.5 - L1
+        r = (l ** 2 + (z - L0) ** 2) ** 0.5
 
-    def set_servo_relatively(self, servo_id, value, duration):
-        if not 0 < servo_id < 4:
-            raise ValueError("Invalid servo id:{}".format(servo_id))
-        index = servo_id - 1
-        pulse = self.servos[index]
+        num = r ** 2 - L2 ** 2 - L3 ** 2
+        den = -2 * L2 * L3
+        
+        # Check if the argument for acos is out of range
+        acos_arg = num / den
+        if acos_arg < -1 or acos_arg > 1:
+            print("Inverse kinematics error: acos argument out of range")
+            return False
+        beta = math.acos(acos_arg)
+        
+        # Check if the argument for asin is out of range
+        asin_arg = L3 * math.sin(beta) / r
+        if asin_arg < -1 or asin_arg > 1:
+            print("Inverse kinematics error: asin argument out of range")
+            return False
+        alpha = math.asin(asin_arg)
 
-        pulse += value
-        return self.set_servo(servo_id, pulse, duration)
+        j2 = math.radians(90) - math.atan2((z - L0), l) - alpha
+        j3 = math.radians(90) + j2 - beta
 
-    def set_joint(self, joint_id, angle, duration):
-        if not 0 < joint_id < 4:
-            raise ValueError("Invalid joint id:{}".format(joint_id))
-        angles = list(self.joints)
-        angles[joint_id - 1] = angle
-        servos = __espmax.deg_to_pulse(angles)
-        return self.set_servo(joint_id, servos[joint_id - 1], duration)
+        joints = tuple(map(math.degrees, [j1, j2, j3]))
 
-    def set_joint_relatively(self, joint_id, value, duration):
-        if not 0 < joint_id < 4:
-            raise ValueError("Invalid joint id:{}".format(joint_id))
-        angles = list(self.joints)
-        angles[joint_id - 1] += value
-        servos = __espmax.deg_to_pulse(angles)
-        return self.set_servo(joint_id, servos[joint_id - 1], duration)
+        return joints
+
+    def pulses_to_position(self, pulses):
+        joints = self.pulses_to_joints(pulses)
+        position = self.forward(joints)
+        return position
+
+    def position_to_pulses(self, position):
+        joints = self.inverse(position)
+        if not joints:
+            print("Failed to calculate inverse kinematics.")
+            return False
+        pulses = self.joints_to_pulses(joints)
+        return pulses
+
+    def read_pulses(self):
+        with Arm._class_lock:
+            pulses = []
+            num_servos = 3
+            max_attempts = 3
+            for i in range(num_servos):
+                for attempt in range(max_attempts):
+                    pulse = self.bus_servo.get_position(i + 1)
+                    if pulse:
+                        pulses.append(pulse)
+                        break
+                    if attempt == max_attempts - 1:
+                        return False
+                    time.sleep_ms(5)
+                time.sleep_ms(5)
+
+            return pulses
+
+    def read_joints(self):
+        pulses = self.read_pulses()
+        joints = self.pulses_to_joints(pulses)
+        return joints
+
+    def read_position(self):
+        pulses = self.read_pulses()
+        position = self.pulses_to_position(pulses)
+        return position
+
+    def set_servos(self, pulses, duration=2000):
+        duration = int(duration)
+
+        if min(pulses) < 0 or max(pulses) > 1000:
+            print("Servo pulse out of range. Must be between 0 and 1000.")
+            return False
+
+        for i in range(3):
+            self.bus_servo.run(i + 1, pulses[i], duration)
+
+        return True
+
+    def set_joints(self, joints, duration=2000):
+        j1, j2, j3 = joints
+
+        if j1 < -118 or j1 > 118:
+            print("j1 angle out of range. Must be between -118 and 118.")
+            return False
+
+        if j2 < -35 or j2 > 90:
+            print("j2 angle out of range. Must be between -35 and 90.")
+            return False
+
+        if j3 < -4 or j3 > 90:
+            print("j1 angle out of range. Must be between -4 and 90.")
+            return False
+
+        if j2 - j3 > 63:
+            print("j2 and j3 angle combination out of range. j2 - j3 must be less than 63.")
+            return False
+
+        pulses = self.joints_to_pulses(joints)
+        self.set_servos(pulses, duration)
+
+    def set_position(self, position, duration=2000):
+        x, y, z = position
+
+        if math.sqrt(x ** 2 + y ** 2) < 90:
+            print("Position out of range. sqrt(x^2 + y^2) must be greater than 90.")
+            return False
+
+        joints = self.inverse(position)
+        if not joints:
+            print("Failed to calculate inverse kinematics.")
+            return False
+        
+        self.set_joints(joints, duration)
+
+    def set_position_with_speed(self, position, speed=0.3):
+        old_position = self.read_position()
+        distance = math.sqrt(sum([(position[i] - old_position[i]) ** 2 for i in range(0, 3)]))
+        duration = distance / max(speed, 0.001)
+        self.set_position(position, duration)
 
     def go_home(self, duration=2000):
-        self.set_position(self.origin, duration)
-  
+        self.set_joints((0, 0, 0), duration)
+
     def teaching_mode(self):
-      for i in range(3):
-        self.bus_servo.unload(i+1)
-  
-    def read_position(self):
-      pulses_list = self.read_pulses()
-      x,y,z = Arm.pulses_to_position(self,pulses_list)
-      return x,y,z
-  
-    def read_angles(self):
-      pulses_list = self.read_pulses()
-      joints = Arm.pulses_to_angles(self,pulses_list)
-      return joints
-    
-    def read_pulses(self):
-      pulses_list = []
-      for i in range(3):
-        pulses = self.bus_servo.get_position(i+1)
-        if pulses:
-          pulses_list.append(pulses)
-        else:
-          n = 0
-          for s in range(3):
-
-
-            pulses = self.bus_servo.get_position(i+1)
-            if pulses:
-              pulses_list.append(pulses)
-              break
-            else:
-              n += 1
-              if n == 3:
-                return False
-            time.sleep_ms(5)
-        time.sleep_ms(5)
-      return pulses_list 
-
-    def verify_position(self, x,y,z):
-      try:
-        angles = __espmax.inverse(self.L4, (x,y,z))
-        pulses = __espmax.deg_to_pulse(angles)
-        return True
-      except:
-        return False
+        for i in range(3):
+            self.bus_servo.unload(i + 1)

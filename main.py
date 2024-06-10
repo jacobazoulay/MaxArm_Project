@@ -27,17 +27,14 @@ def display_welcome_msg(rob: Robot):
     led_dig_disp = rob.LED_seg_disp
     led_dig_disp.tube_display("    Hello Robot", scroll_speed_ms=150)
     led_dig_disp.tube_display("----")
-    
-    
-def start_up_animation(rob: Robot):
-    rob.LED_mat_disp.robot_start_up_animation()
 
 
 def reset(rob: Robot):
-    thread.start_new_thread(rob.rob_reset_arm, ())
+    thread.start_new_thread(rob.reset, [False])
+    thread.start_new_thread(rob.LED_mat_disp.robot_start_up_animation, ())
     thread.start_new_thread(buz_led_reset, [rob])
     thread.start_new_thread(display_welcome_msg, [rob])
-    thread.start_new_thread(start_up_animation, [rob])
+
 
 def play(game_num=1, auto=False):
     if game_num == 1:
