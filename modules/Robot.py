@@ -70,7 +70,6 @@ class Robot:
             return
         if mimicFlag is True:
             if Robot._class_lock.locked():
-                print("Unable to mimic position because matrix is used by another resource.")
                 return
             thread.start_new_thread(self._mimic_loop, ())
 

@@ -97,17 +97,17 @@ def learnArmPos():
     rob.LED_seg_disp.tube_display_flash(len(positions), num_flash=3, flash_speed=750)
     rob.LED_seg_disp.update_display()
 
-def cycleCardsRandom(num=1, press_dur=1500, retract_dur=2000):
+def cycleCardsRandom(num=1, press_dur=1500, retract_dur=2000, lockout_reads=5):
     rob = Robot()
     rob.arm.set_position_with_speed((115, 0, 190), 0.3)
-    prevs = [-1, -1, -1]
+    prevs = [-1] * lockout_reads
     for cycle in range(num):
         
-        if prevs == [0, 0, 0]:
+        if prevs == [0] * lockout_reads:
             t = 90
             print("Lockout detected. Pausing for " + str(t) + " seconds.\n" )
             time.sleep(t)
-            prevs = [-1, -1, -1]
+            prevs = [-1] * lockout_reads
             
         if random.random() < 0.5:
             slot = 0
