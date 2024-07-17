@@ -23,6 +23,8 @@ class Arm:
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     def pulses_to_joints(self, pulses):
+        if not pulses:
+            return False
         joints = []
         for i, pulse in enumerate(pulses):
             joint = self.map(pulse, 120, 880, -90, 90)
@@ -31,6 +33,8 @@ class Arm:
         return joints
 
     def joints_to_pulses(self, joints):
+        if not joints:
+            return False
         pulses = []
         for i, joint in enumerate(joints):
             joint *= SERVO_DIRECTION[i]
@@ -39,6 +43,8 @@ class Arm:
         return pulses
 
     def forward(self, joints):
+        if not joints:
+            return False
         j1, j2, j3 = list(map(math.radians, joints))
         x = (L1 + L2 * math.sin(j2) + L3 * math.cos(j3)) * math.cos(j1)
         y = (L1 + L2 * math.sin(j2) + L3 * math.cos(j3)) * math.sin(j1)
@@ -48,6 +54,8 @@ class Arm:
         return position
 
     def inverse(self, position):
+        if not position:
+            return False
         x, y, z = position
 
         j1 = math.atan2(y, x)
@@ -112,11 +120,16 @@ class Arm:
 
     def read_joints(self):
         pulses = self.read_pulses()
+        if not pulses:
+            return False
         joints = self.pulses_to_joints(pulses)
         return joints
 
     def read_position(self):
         pulses = self.read_pulses()
+        print(pulses)
+        if not pulses:
+            return False
         position = self.pulses_to_position(pulses)
         return position
 
@@ -170,8 +183,13 @@ class Arm:
 
     def set_position_with_speed(self, position, speed=0.3):
         old_position = self.read_position()
-        distance = math.sqrt(sum([(position[i] - old_position[i]) ** 2 for i in range(0, 3)]))
-        duration = distance / max(speed, 0.001)
+        if old_position:
+            distance = math.sqrt(sum([(position[i] - old_position[i]) ** 2 for i in range(0, 3)]))
+            duration = distance / max(speed, 0.001)
+            print(duration)
+        else:
+            duration = 400
+            print("Failed")
         self.set_position(position, duration)
 
     def go_home(self, duration=2000):

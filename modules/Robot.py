@@ -88,26 +88,32 @@ class Robot:
             return
 
         thresh = 250
+        MIN_CONSECUTIVE_TO_BE_VALID = 9
         meas = ['start']
+        meas_temp = [None] * MIN_CONSECUTIVE_TO_BE_VALID
 
         start_time = time.time()
         timeout_duration = (timeout / 1000) * 0.8
 
         while time.time() - start_time < timeout_duration:
             r, g, b = self.RGB_sensor.readRGBLight()
-            # print("(" + str(r) + ", " + str(g) + ", " + str(b) + ")")
+            # print("(" + str(r) + ", " + str(g) + ", " + str(b) + "),")
             if max(r, g, b) > thresh:  # if the light is on
-                if r > g and r > b and g > 0.33 * r and meas[-1] != 'y':
-                    meas.append('y')
-                elif r > g and r > b and g <= 0.33 * r and meas[-1] != 'r':
-                    meas.append('r')
-                elif g > r and g > b and meas[-1] != 'g':
-                    meas.append('g')
-                elif b > r and b > g and meas[-1] != 'b':
-                    meas.append('b')
+                if r > g and r > b and g > 0.33 * r:
+                    meas_temp.append('y')
+                elif r > g and r > b and g <= 0.33 * r:
+                    meas_temp.append('r')
+                elif g > r and g > b * 1.2:
+                    meas_temp.append('g')
+                else:
+                    meas_temp.append('b')
             else:  # if the light is off
-                if meas[-1] != 'n':
-                    meas.append('n')
+                    meas_temp.append('n')
+                    
+            meas_temp.pop(0)
+
+            if len(set(meas_temp)) == 1 and meas[-1] != meas_temp[-1]:
+                meas.append(meas_temp[-1])
 
         color_decode = {('start', 'n', 'r', 'n'): 'declined',
                         ('start', 'y', 'n', 'r', 'n'): 'declined',
@@ -124,6 +130,8 @@ class Robot:
                         ('start', 'n', 'r', 'n', 'r', 'b', 'n'): 'lockout',
                         ('start', 'n', 'r', 'y', 'b', 'n'): 'lockout',
                         ('start', 'n', 'r', 'n', 'r', 'n', 'b', 'n'): 'lockout',
+                        ('start', 'n', 'r', 'b', 'g', 'n'): 'lockout',
+                        ('start', 'n', 'r', 'n', 'r', 'y', 'b', 'n'): 'lockout',
 
                         ('start', 'n', 'y'): 'waiting',
                         ('start', 'n', 'y', 'n'): 'waiting',
@@ -146,7 +154,7 @@ class Robot:
         if self.RGB_sensor is not None:  # If no rgb sensor, no readRGB is displayed on Matrix, so just show robot mimic position
             self.mimic_position(False)
 
-        self.arm.set_position_with_speed((115, 0, 190), 0.3)
+        self.arm.set_position((115, 0, 190), 400)
         self.LED_seg_disp.tube_display("crd" + str(slot + 1))
         self.end_effector.set_card(slot)
 
@@ -156,9 +164,9 @@ class Robot:
 
             thread.start_new_thread(self.readRGB, [press_dur + retract_dur])
 
-            self.arm.set_position_with_speed((213, 0, 180), 0.3)
+            self.arm.set_position((213, 0, 180), 400)
             time.sleep_ms(press_dur)
-            self.arm.set_position_with_speed((115, 0, 190), 0.3)
+            self.arm.set_position((115, 0, 190), 400)
             time.sleep_ms(retract_dur)
             while self.thread_running:
                 time.sleep_ms(100)
