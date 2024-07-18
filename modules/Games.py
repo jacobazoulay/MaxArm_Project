@@ -218,11 +218,14 @@ class JumperGame():
         self.jumper = Jumper()
         self.obstacles = []
         self.new_obs_timer = 0
+        self.dark_mode = False
         thread.start_new_thread(self.readKeyInput, ())
 
     def playGame(self):
         try:
             while self.jumper.alive:
+                if self.jumper.score % 300 == 0 and self.jumper.score != 0:
+                    self.flip_dark_mode()
                 self.led_digit.tube_display(self.jumper.score)
                 self.update_obstacles()
                 self.jumper.update()
@@ -237,6 +240,12 @@ class JumperGame():
             self.jumper.alive = False
             time.sleep_ms(500)
             raise e
+        
+    def flip_dark_mode(self):
+        for i in range(7):
+            self.dark_mode = not self.dark_mode
+            self.displayFrame()
+            time.sleep_ms(150)
 
     def game_over(self):
         game = [0x5c, 0x54, 0x7c, 0x00, 0x7c, 0x14, 0x7c, 0x00, 0x7c, 0x08, 0x7c, 0x00, 0x7c, 0x54, 0x44, 0x00]
@@ -277,5 +286,7 @@ class JumperGame():
 
     def displayFrame(self):
         out = self.disp_animator.conv_frame(self.jumper.frame)
+        if self.dark_mode:
+            out = [~row for row in out]
         self.led_matrix.write(out)
         return out

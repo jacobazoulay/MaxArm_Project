@@ -37,6 +37,8 @@ def reset(rob: Robot):
 
 
 def play(game_num=1, auto=False):
+    try: rob.mimic_position(False)
+    except: pass
     if game_num == 1:
         from Games import SnakeGame
         game = SnakeGame()
