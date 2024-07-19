@@ -170,7 +170,7 @@ class Robot:
             time.sleep_ms(retract_dur)
             while self.thread_running:
                 time.sleep_ms(100)
-            print("Presentation Number: {}      Reading: {}".format(i + 1, self.RGB_last_reading))
+            print("Presentation Number: {}      Reading: {}      Card Slot: {} ".format(i + 1, self.RGB_last_reading, slot))
 
         self.arm.teaching_mode()
         if self.RGB_sensor is not None:
