@@ -1,0 +1,12 @@
+{
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/MaxArm_Source/modules",
+    ],
+    "files.exclude": {
+        ".gitignore": false,
+        ".idea": false,
+        "pymakr.conf": false
+        
+    },
+    "python.analysis.stubPath": "${workspaceFolder}/ESP32-Stubs-VSCode"
+}
